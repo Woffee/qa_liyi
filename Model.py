@@ -24,8 +24,10 @@ logging.basicConfig(level=logging.INFO,
 logger = logging.getLogger(__name__)
 
 from word2vec import remove_punc
+import nltk
 from nltk.tokenize import word_tokenize
 from gensim.models.keyedvectors import KeyedVectors
+nltk.download('punkt')
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 config = tf.ConfigProto()
