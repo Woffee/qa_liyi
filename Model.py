@@ -6,7 +6,7 @@ import keras.backend.tensorflow_backend as KTF
 from keras.optimizers import adam
 from keras.layers.recurrent import GRU
 from keras.layers.core import Lambda
-from keras.layers import Dot, add, Bidirectional, Dropout
+from keras.layers import Dot, add, Bidirectional, Dropout, Reshape
 from keras.models import Input, Model
 from keras import backend as K
 from adding_weight import adding_weight
@@ -65,6 +65,8 @@ def negative_samples(input_length, input_dim, output_length, output_dim, hidden_
     w_decoder_input_list = Lambda(lambda x: tf.split(x, num_or_size_splits=ns_amount, axis=3))(w_decoder_input)
     fixed_w_decoder_input = []
     for i in range(ns_amount):
+        w_decoder_input_list[i] = Reshape((output_length, output_dim))(w_decoder_input_list[i])
+        weight_data_w_list[i] = Reshape((1,))(weight_data_w_list[i])
         fixed_w_decoder_input.append(adding_weight(output_length, output_dim)([w_decoder_input_list[i], weight_data_w_list[i]]))
     encoder = Bidirectional(GRU(hidden_dim), merge_mode="ave")
     q_encoder_output = encoder(q_encoder_input)
