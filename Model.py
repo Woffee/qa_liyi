@@ -11,12 +11,21 @@ from keras.models import Input, Model
 from keras import backend as K
 from adding_weight import adding_weight
 
+import keras
+
+import time
+import logging
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+now_time = time.strftime("%Y-%m-%d-%H-%M", time.localtime())
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s %(levelname)s %(filename)s line: %(lineno)s - %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S',
+                    filename=BASE_DIR + '/' + now_time + '.log')
+logger = logging.getLogger(__name__)
 
 from word2vec import remove_punc
 from nltk.tokenize import word_tokenize
 from gensim.models.keyedvectors import KeyedVectors
-
-
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 config = tf.ConfigProto()
@@ -119,6 +128,7 @@ def get_randoms(arr, exp, num=2):
 
 
 def train(w2v_model, qa_file, doc_file):
+    logger.info("preprocessing...")
     ns_amount = 10
 
     questions = []
@@ -218,6 +228,7 @@ def train(w2v_model, qa_file, doc_file):
                              learning_rate=0.001,
                              drop_rate=0.005)
     print("start training...")
+    logger.info("start training...")
     model.fit([q_encoder_input[:train_num], r_decoder_input[:train_num], w_decoder_input[:train_num], weight_data_r[:train_num], weight_data_w[:train_num] ],
               batch_size=64,
               epochs=20,
@@ -226,6 +237,7 @@ def train(w2v_model, qa_file, doc_file):
 
     res = model.evaluate([q_encoder_input[train_num:], r_decoder_input[train_num:], w_decoder_input[train_num:], weight_data_r[train_num:], weight_data_w[train_num:] ], y_test, verbose=1)
     print("training over.")
+    logger.info("training over")
     print(model.metrics_names)
     print(res)
     model.save("models/nn.bin")
