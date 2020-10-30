@@ -187,6 +187,7 @@ def get_train_data(w2v_model,  qa_file, doc_file):
     label_list = []
 
     for i in range( total ):
+        logger.info("question: %d" % i)
         qid_list.append(i)
         label_list.append(1)
 
@@ -238,7 +239,7 @@ def get_train_data(w2v_model,  qa_file, doc_file):
             weight_data_w.append(w_weight)
 
 
-
+    logger.info("loading weights...")
     model = negative_samples(input_length=input_length,
                              input_dim=200,
                              output_length=output_length,
@@ -251,8 +252,9 @@ def get_train_data(w2v_model,  qa_file, doc_file):
     new_dnn_model = Model(inputs=model.input, outputs=model.get_layer('dropout2').output)
 
     train_num = int(total * 0.9)
+    logger.info("predicting...")
     res = new_dnn_model.predict([q_encoder_input, r_decoder_input, w_decoder_input, weight_data_r, weight_data_w])
-    print(res)
+    # print(res)
 
     to_file_path = "for_ltr/ltr_train.txt"
     with open(to_file_path, "w") as f:
