@@ -2,3 +2,4 @@ ebay/
 models/
 .idea/
 __pycache__/
+*.log

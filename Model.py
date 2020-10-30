@@ -107,6 +107,8 @@ def sentence2vec(w2v_model, s, max_length):
     else:
         words = s
     vec = []
+    if len(words) > max_length:
+        words = words[:max_length]
     for word in words:
         if word in w2v_model.wv.vocab:
             vec.append(w2v_model.wv[word])
@@ -153,6 +155,7 @@ def train(w2v_model, qa_file, doc_file):
                     if a != "":
                         ans.append(int(a) - 1) # 因为原始数据从1开始计数，这里减去1。改为从0开始。
                 answers.append(ans)
+
     question_vecs = []
     for q_words in questions:
         question_vecs.append(sentence2vec(w2v_model, q_words, input_length))
@@ -171,9 +174,11 @@ def train(w2v_model, qa_file, doc_file):
                 output_length = max(len(words), output_length)
                 docs.append(words)
     doc_vecs = []
+    output_length = 1000
     for d_words in docs:
         doc_vecs.append(sentence2vec(w2v_model, d_words, output_length))
     print("len(doc_vecs)",len(doc_vecs))
+    logger.info("input_length:%d, output_length:%d" % (input_length, output_length))
 
     # 计算每个doc出现的频率
     doc_count = {}
@@ -199,10 +204,13 @@ def train(w2v_model, qa_file, doc_file):
     w_decoder_input = []
     weight_data_r = []
     weight_data_w = []
+    y_data = []
 
     total = len(question_vecs)
 
     for i in range( total ):
+        y = [1] + [0] * ns_amount
+        y_data.append(y)
         # question
         q_encoder_input.append( question_vecs[i] )
         # 每个question一个正确答案
@@ -216,10 +224,15 @@ def train(w2v_model, qa_file, doc_file):
         for aid in aids:
             w_decoder.append( doc_vecs[aid] )
             w_weight.append( doc_weight[ aid ])
+        w_decoder = np.array(w_decoder).reshape(output_length, 200, ns_amount)
+        w_weight = np.array(w_weight).reshape((1, ns_amount))
         w_decoder_input.append(w_decoder)
         weight_data_w.append(w_weight)
+    y_data = np.array(y_data).reshape(total, (1+ns_amount))
 
-
+    # w_decoder_input = np.array(w_decoder_input)
+    # print(w_decoder_input.shape)
+    # reshape(ns_amount, output_length, 200)
     train_num = int(total * 0.9)
     model = negative_samples(input_length=input_length,
                              input_dim=200,
@@ -231,13 +244,14 @@ def train(w2v_model, qa_file, doc_file):
                              drop_rate=0.005)
     print("start training...")
     logger.info("start training...")
-    model.fit([q_encoder_input[:train_num], r_decoder_input[:train_num], w_decoder_input[:train_num], weight_data_r[:train_num], weight_data_w[:train_num] ],
+    model.fit([q_encoder_input[:train_num], r_decoder_input[:train_num], w_decoder_input[:train_num], weight_data_r[:train_num], weight_data_w[:train_num] ], y_data[:train_num],
               batch_size=64,
               epochs=20,
               verbose=1,
-              validation_data=([q_encoder_input[train_num:], r_decoder_input[train_num:], w_decoder_input[train_num:], weight_data_r[train_num:], weight_data_w[train_num:] ]))
+              validation_data=([q_encoder_input[train_num:], r_decoder_input[train_num:], w_decoder_input[train_num:], weight_data_r[train_num:], weight_data_w[train_num:] ], y_data[train_num:])
+              )
 
-    res = model.evaluate([q_encoder_input[train_num:], r_decoder_input[train_num:], w_decoder_input[train_num:], weight_data_r[train_num:], weight_data_w[train_num:] ], y_test, verbose=1)
+    res = model.evaluate([q_encoder_input[train_num:], r_decoder_input[train_num:], w_decoder_input[train_num:], weight_data_r[train_num:], weight_data_w[train_num:] ], y_data[train_num:],verbose=1)
     print("training over.")
     logger.info("training over")
     print(model.metrics_names)
