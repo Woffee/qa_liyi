@@ -106,7 +106,7 @@ def negative_samples(input_length, input_dim, output_length, output_dim, hidden_
 
 
 
-def get_train_data(w2v_model,  qa_file, doc_file):
+def get_train_data(data_type, w2v_model,  qa_file, doc_file, step = 0):
     logger.info("preprocessing...")
     ns_amount = 10
 
@@ -186,7 +186,9 @@ def get_train_data(w2v_model,  qa_file, doc_file):
     qid_list = []
     label_list = []
 
-    for i in range( total ):
+    end = min(total, (step+1)*200)
+
+    for i in range( step * 200, end):
         logger.info("question: %d" % i)
         qid_list.append(i)
         label_list.append(1)
@@ -256,7 +258,7 @@ def get_train_data(w2v_model,  qa_file, doc_file):
     res = new_dnn_model.predict([q_encoder_input, r_decoder_input, w_decoder_input, weight_data_r, weight_data_w])
     # print(res)
 
-    to_file_path = "for_ltr/ltr_train.txt"
+    to_file_path = "for_ltr/ltr_%s_train_%d.txt" % (data_type, step)
     with open(to_file_path, "w") as f:
         for i in range(len(res)):
             row = res[i]
@@ -278,11 +280,12 @@ if __name__ == '__main__':
     # model = load_model(model_path)
     # new_dnn_model = Model(inputs=model.input, outputs=model.get_layer('dropout2').output)
 
-    w2v_path = "models/ebay.wv.cbow.d200.w10.n10.bin"
+    data_type = 'ebay'
+    w2v_path = "models/%s.wv.cbow.d200.w10.n10.bin" % data_type
     w2v_model = KeyedVectors.load_word2vec_format(w2v_path, binary=True)
 
-    qa_path = "ebay/QA_list.txt"
-    doc_path = "ebay/Doc_list.txt"
+    qa_path = "%s/QA_list.txt" % data_type
+    doc_path = "%s/Doc_list.txt" % data_type
 
 
-    get_train_data(w2v_model, qa_path, doc_path)
+    get_train_data(data_type, w2v_model, qa_path, doc_path, 1)
