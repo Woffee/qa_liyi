@@ -185,6 +185,7 @@ def get_train_data(data_type, w2v_model,  qa_file, doc_file, step = 0):
 
     qid_list = []
     label_list = []
+    aid_list = []
 
     end = min(total, (step+1)*200)
 
@@ -199,6 +200,7 @@ def get_train_data(data_type, w2v_model,  qa_file, doc_file, step = 0):
         q_encoder_input.append( question_vecs[i] )
         # 每个question一个正确答案
         aid = answers[i][0]
+        aid_list.append(aid)
         r_decoder_input.append( doc_vecs[ aid ])
         weight_data_r.append(doc_weight[ aid ])
         # 10个un-related答案
@@ -218,6 +220,7 @@ def get_train_data(data_type, w2v_model,  qa_file, doc_file, step = 0):
         for aaid in aids:
             qid_list.append(i)
             label_list.append(0)
+            aid_list.append(aaid)
 
             # 这些答案都是unrelated
             y = [0] * (1+ns_amount)
@@ -267,8 +270,9 @@ def get_train_data(data_type, w2v_model,  qa_file, doc_file, step = 0):
                 feature_str = feature_str + (" %d:%.9f" % (j + 1, row[j]))
             label = label_list[i]
             id = qid_list[i]
+            doc_id = aid_list[i]
 
-            line = "%d qid:%d%s # our_code \n" % (label, id, feature_str)
+            line = "%d qid:%d%s # doc-%d \n" % (label, id, feature_str,doc_id)
             f.write(line)
     print("saved to:", to_file_path)
 
