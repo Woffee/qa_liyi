@@ -197,7 +197,7 @@ def get_train_data(data_type, w2v_model, ckpt_path,  qa_file, doc_file, to_file_
     qid_list = []
 
 
-    for i in range( 710, total):
+    for i in range( train_num, total):
         # [q_encoder_input, r_decoder_input, w_decoder_input, weight_data_r, weight_data_w]
         q_encoder_input = []
         r_decoder_input = []
@@ -264,6 +264,8 @@ def get_train_data(data_type, w2v_model, ckpt_path,  qa_file, doc_file, to_file_
                 line = "%d qid:%d%s # doc-%d \n" % (label, i, feature_str,doc_id)
                 f.write(line)
     print("saved to:", to_file_path)
+    logger.info("total:%d" % total)
+    logger.info("saved to: %s" % to_file_path)
 
 
 
