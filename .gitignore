@@ -6,4 +6,6 @@ __pycache__/
 ckpt/
 ltr/
 for_ltr/
-
+.DS_Store
+twitter/
+adwords/

@@ -11,7 +11,7 @@
         res = new_dnn_model.predict([doc_train, que_train, fea_train])
 
 """
-import sys
+
 import os
 import numpy as np
 
@@ -106,7 +106,13 @@ def negative_samples(input_length, input_dim, output_length, output_dim, hidden_
 
 
 
-def get_train_data(data_type, w2v_model,  qa_file, doc_file, step = 0):
+def get_train_data(data_type, w2v_model, ckpt_path,  qa_file, doc_file, to_file_path, step = 0):
+
+    if os.path.exists(to_file_path):
+        logger.info("file exists: %s" % to_file_path)
+        return
+
+
     logger.info("preprocessing...")
     ns_amount = 10
 
@@ -157,12 +163,12 @@ def get_train_data(data_type, w2v_model,  qa_file, doc_file, step = 0):
 
     # 计算每个doc出现的频率
     doc_count = {}
+    for ii in range( len(docs)):
+        doc_count[ii] = 0
     for ans in answers:
         for a in ans:
             if a in doc_count.keys():
                 doc_count[a] += 1
-            else:
-                doc_count[a] = 1
 
     # 计算每个doc的weight
     doc_weight = {}
@@ -172,66 +178,64 @@ def get_train_data(data_type, w2v_model,  qa_file, doc_file, step = 0):
     for k in doc_count.keys():
         doc_weight[k] = doc_count[k] / t_max
 
+    logger.info("loading weights...")
+    model = negative_samples(input_length=input_length,
+                             input_dim=200,
+                             output_length=output_length,
+                             output_dim=200,
+                             hidden_dim=64,
+                             ns_amount=ns_amount,
+                             learning_rate=0.001,
+                             drop_rate=0.001)
+    model.load_weights(ckpt_path)
+    new_dnn_model = Model(inputs=model.input, outputs=model.get_layer('dropout2').output)
 
-    # [q_encoder_input, r_decoder_input, w_decoder_input, weight_data_r, weight_data_w]
-    q_encoder_input = []
-    r_decoder_input = []
-    w_decoder_input = []
-    weight_data_r = []
-    weight_data_w = []
-    y_data = []
 
     total = len(question_vecs)
+    train_num = int(total * 0.9)
 
     qid_list = []
-    label_list = []
-    aid_list = []
-
-    end = min(total, (step+1)*200)
-    logger.info("total:%d" % total)
-    for i in range( step * 200, end):
-        logger.info("question: %d" % i)
-        qid_list.append(i)
-        label_list.append(1)
-
-        y = [1] + [0] * ns_amount
-        y_data.append(y)
-        # question
-        q_encoder_input.append( question_vecs[i] )
-        # 每个question一个正确答案
-        aid = answers[i][0]
-        aid_list.append(aid)
-        r_decoder_input.append( doc_vecs[ aid ])
-        weight_data_r.append(doc_weight[ aid ])
-        # 10个un-related答案
-        aids = get_randoms(list(doc_weight.keys()), aid, 10)
-        w_decoder = []
-        w_weight = []
-        for aid in aids:
-            w_decoder.append( doc_vecs[aid] )
-            w_weight.append( doc_weight[ aid ])
-
-        w_decoder = np.array(w_decoder).reshape(output_length, 200, ns_amount)
-        w_weight = np.array(w_weight).reshape((1, ns_amount))
-        w_decoder_input.append(w_decoder)
-        weight_data_w.append(w_weight)
 
 
-        for aaid in aids:
-            qid_list.append(i)
-            label_list.append(0)
-            aid_list.append(aaid)
+    for i in range( 710, total):
+        # [q_encoder_input, r_decoder_input, w_decoder_input, weight_data_r, weight_data_w]
+        q_encoder_input = []
+        r_decoder_input = []
+        w_decoder_input = []
+        weight_data_r = []
+        weight_data_w = []
 
-            # 这些答案都是unrelated
-            y = [0] * (1+ns_amount)
-            y_data.append(y)
+
+        logger.info("get all documents for question: %d" % i)
+        print("get all documents for question: %d" % i)
+        # qid_list.append(i)
+        # label_list.append(1)
+
+        cur_answers = answers[i]
+        doc_list_ordered = [a for a in cur_answers]
+        for aid in list(doc_weight.keys()):
+            if aid not in doc_list_ordered:
+                doc_list_ordered.append(aid)
+
+        label_list = []
+        aid_list = []
+
+        print("len(doc_list_ordered):", len(doc_list_ordered))
+        print("len(cur_answers):", len(cur_answers))
+
+        for aid in doc_list_ordered:
+            aid_list.append(aid)
+            if aid in cur_answers:
+                label_list.append(1)
+            else:
+                label_list.append(0)
+
             # question
             q_encoder_input.append(question_vecs[i])
-
-            r_decoder_input.append(doc_vecs[aaid])
-            weight_data_r.append(doc_weight[aaid])
+            r_decoder_input.append(doc_vecs[aid])
+            weight_data_r.append(doc_weight[aid])
             # 10个un-related答案
-            aids = get_randoms(list(doc_weight.keys()), aid, 10)
+            aids = get_randoms(list(doc_weight.keys()), cur_answers, ns_amount)
             w_decoder = []
             w_weight = []
             for aid in aids:
@@ -243,55 +247,37 @@ def get_train_data(data_type, w2v_model,  qa_file, doc_file, step = 0):
             w_decoder_input.append(w_decoder)
             weight_data_w.append(w_weight)
 
+        logger.info("predicting question: %d" % i)
+        print("predicting question: %d" % i)
+        res = new_dnn_model.predict([q_encoder_input, r_decoder_input, w_decoder_input, weight_data_r, weight_data_w])
+        # print(res)
 
-    logger.info("loading weights: ckpt/nn_weights_%s.h5" % data_type)
-    model = negative_samples(input_length=input_length,
-                             input_dim=200,
-                             output_length=output_length,
-                             output_dim=200,
-                             hidden_dim=64,
-                             ns_amount=ns_amount,
-                             learning_rate=0.001,
-                             drop_rate=0.005)
-    model.load_weights("ckpt/nn_weights_%s.h5" % data_type)
-    new_dnn_model = Model(inputs=model.input, outputs=model.get_layer('dropout2').output)
+        with open(to_file_path, "a") as f:
+            for j in range(len(res)):
+                row = res[j]
+                feature_str = ''
+                for k in range(len(row)):
+                    feature_str = feature_str + (" %d:%.9f" % (k + 1, row[k]))
+                label = label_list[j]
+                doc_id = aid_list[j]
 
-    train_num = int(total * 0.9)
-    logger.info("predicting...")
-    res = new_dnn_model.predict([q_encoder_input, r_decoder_input, w_decoder_input, weight_data_r, weight_data_w])
-    # print(res)
-
-    to_file_path = "for_ltr/ltr_%s_train_%d.txt" % (data_type, step)
-    with open(to_file_path, "w") as f:
-        for i in range(len(res)):
-            row = res[i]
-            feature_str = ''
-            for j in range(len(row)):
-                feature_str = feature_str + (" %d:%.9f" % (j + 1, row[j]))
-            label = label_list[i]
-            id = qid_list[i]
-            doc_id = aid_list[i]
-
-            line = "%d qid:%d%s # doc-%d \n" % (label, id, feature_str,doc_id)
-            f.write(line)
+                line = "%d qid:%d%s # doc-%d \n" % (label, i, feature_str,doc_id)
+                f.write(line)
     print("saved to:", to_file_path)
-    logger.info("total:%d" % total)
-    logger.info("saved to: %s" % to_file_path)
 
 
 
 
 if __name__ == '__main__':
 
+
     # model = load_model(model_path)
     # new_dnn_model = Model(inputs=model.input, outputs=model.get_layer('dropout2').output)
 
-    data_type = 'twitter'
-    step = 0
-    if len(sys.argv) > 2:
-         data_type = sys.argv[1]
-         step = int(sys.argv[2])
+    data_type = 'adwords'
+
     model_path = "models/nn_%s.bin" % data_type
+    ckpt_path = "ckpt/nn_weights_%s.h5"% data_type
 
     w2v_path = "models/%s.wv.cbow.d200.w10.n10.bin" % data_type
     w2v_model = KeyedVectors.load_word2vec_format(w2v_path, binary=True)
@@ -299,7 +285,5 @@ if __name__ == '__main__':
     qa_path = "%s/QA_list.txt" % data_type
     doc_path = "%s/Doc_list.txt" % data_type
 
-    logger.info("step:%d" % step)
-    logger.info("data_type:%s" % data_type)        
-
-    get_train_data(data_type, w2v_model, qa_path, doc_path, step)
+    to_file_path = "for_ltr/ltr_%s_test_v2.txt" % (data_type)
+    get_train_data(data_type, w2v_model,ckpt_path, qa_path, doc_path, to_file_path, 1)

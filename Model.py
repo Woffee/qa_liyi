@@ -123,12 +123,12 @@ def sentence2vec(w2v_model, s, max_length):
     return np.array(vec)
 
 
-def get_randoms(arr, exp, num=2):
+def get_randoms(arr, not_in, num=2):
     ma = len(arr)
     res = []
     for i in range(num):
         r = random.randint(1, ma-1)
-        while( arr[r] == exp ):
+        while( arr[r] in not_in ):
             r = random.randint(1, ma-1)
         res.append(arr[r])
     return res
@@ -221,7 +221,7 @@ def train(w2v_model, qa_file, doc_file, to_model_file, to_ckpt_file):
         r_decoder_input.append( doc_vecs[ aid ])
         weight_data_r.append(doc_weight[ aid ])
         # 10个un-related答案
-        aids = get_randoms(list(doc_weight.keys()), aid, 10)
+        aids = get_randoms(list(doc_weight.keys()), [aid], 10)
         w_decoder = []
         w_weight = []
         for aid in aids:
@@ -244,7 +244,7 @@ def train(w2v_model, qa_file, doc_file, to_model_file, to_ckpt_file):
                              hidden_dim=64,
                              ns_amount=ns_amount,
                              learning_rate=0.001,
-                             drop_rate=0.005)
+                             drop_rate=0.001)
     print("start training...")
     logger.info("start training...")
     model.fit([q_encoder_input[:train_num], r_decoder_input[:train_num], w_decoder_input[:train_num], weight_data_r[:train_num], weight_data_w[:train_num] ], y_data[:train_num],
@@ -273,15 +273,17 @@ def train(w2v_model, qa_file, doc_file, to_model_file, to_ckpt_file):
 
 
 if __name__ == '__main__':
-    path = "models/ebay.wv.cbow.d200.w10.n10.bin"
-    to_model_file = "models/nn2.bin"
-    to_ckpt_file = "ckpt/nn2_weights.h5"
+    data_type = "adwords"
+
+    path = "models/%s.wv.cbow.d200.w10.n10.bin" % data_type
+    to_model_file = "models/nn_%s.bin" % data_type
+    to_ckpt_file = "ckpt/nn_weights_%s.h5" % data_type
 
 
     w2v_model = KeyedVectors.load_word2vec_format(path, binary=True)
 
-    qa_path = "ebay/QA_list.txt"
-    doc_path = "ebay/Doc_list.txt"
+    qa_path = "%s/QA_list.txt" % data_type
+    doc_path = "%s/Doc_list.txt" % data_type
 
     # res = sentence2vec(w2v_model, "I want to determine Quantity sold", 10)
     train(w2v_model, qa_path, doc_path, to_model_file, to_ckpt_file)

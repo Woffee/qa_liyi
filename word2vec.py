@@ -55,13 +55,14 @@ def get_embeddings(data_type, qa_file, doc_file):
                          sg = sg)
     to_file = "models/%s.wv.cbow.d%d.w%d.n%d.bin" % (data_type, size, window,negative)
     w2v_model.wv.save_word2vec_format(to_file, binary=True)
+    print("saved to:", to_file)
 
 
 if __name__ == '__main__':
-    data_type = "ebay"
+    data_type = "adwords"
     doc_file = data_type + "/Doc_list.txt"
     qa_file = data_type + "/QA_list.txt"
-    # get_embeddings(data_type, qa_file, doc_file)
+    get_embeddings(data_type, qa_file, doc_file)
 
 
 

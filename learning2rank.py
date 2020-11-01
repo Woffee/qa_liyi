@@ -25,9 +25,9 @@ if __name__ == '__main__':
     train_metric = 'MAP'
     train_model = 'RankNet'
 
-    data_type = "ebay"
+    data_type = "twitter"
     data_train_path = "for_ltr/ltr_%s_train.txt" % data_type
-    data_test_path = "for_ltr/ltr_%s_test.txt" % data_type
+    data_test_path = "for_ltr/ltr_%s_test_v2.txt" % data_type
 
     save_model_path = BASE_DIR + '/ltr/models/' + data_type + "_" + train_model + '_' + train_metric + ".txt"
     data_pred_path = BASE_DIR + '/ltr/predicts/' + data_type + "_" + train_model + '_' + train_metric + "_pred.txt"
