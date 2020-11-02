@@ -209,7 +209,7 @@ def get_train_data(data_type, w2v_model,  qa_file, doc_file, to_file_path, step 
         r_decoder_input.append( doc_vecs[ aid ])
         weight_data_r.append(doc_weight[ aid ])
         # 10个un-related答案
-        aids = get_randoms(list(doc_weight.keys()), aid, 10)
+        aids = get_randoms(list(doc_weight.keys()), [aid], 10)
         w_decoder = []
         w_weight = []
         for aid in aids:
