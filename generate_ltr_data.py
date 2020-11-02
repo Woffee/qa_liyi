@@ -106,7 +106,7 @@ def negative_samples(input_length, input_dim, output_length, output_dim, hidden_
 
 
 
-def get_train_data(data_type, w2v_model,  qa_file, doc_file, step = 0):
+def get_train_data(data_type, w2v_model,  qa_file, doc_file, to_file_path, step = 0):
     logger.info("preprocessing...")
     ns_amount = 10
 
@@ -187,8 +187,13 @@ def get_train_data(data_type, w2v_model,  qa_file, doc_file, step = 0):
     label_list = []
     aid_list = []
 
-    end = min(total, (step+1)*200)
-    logger.info("total:%d" % total)
+    train_num = int(total * 0.9)
+    logger.info("train_num:%d, total:%d" % (train_num, total))
+    if step * 200 > train_num:
+        logger.info("step is too big")
+        return
+
+    end = min(train_num, (step + 1) * 200)
     for i in range( step * 200, end):
         logger.info("question: %d" % i)
         qid_list.append(i)
@@ -256,13 +261,13 @@ def get_train_data(data_type, w2v_model,  qa_file, doc_file, step = 0):
     model.load_weights("ckpt/nn_weights_%s.h5" % data_type)
     new_dnn_model = Model(inputs=model.input, outputs=model.get_layer('dropout2').output)
 
-    train_num = int(total * 0.9)
+
     logger.info("predicting...")
     res = new_dnn_model.predict([q_encoder_input, r_decoder_input, w_decoder_input, weight_data_r, weight_data_w])
     # print(res)
 
-    to_file_path = "for_ltr/ltr_%s_train_%d.txt" % (data_type, step)
-    with open(to_file_path, "w") as f:
+
+    with open(to_file_path, "a") as f:
         for i in range(len(res)):
             row = res[i]
             feature_str = ''
@@ -287,10 +292,18 @@ if __name__ == '__main__':
     # new_dnn_model = Model(inputs=model.input, outputs=model.get_layer('dropout2').output)
 
     data_type = 'twitter'
-    step = 0
-    if len(sys.argv) > 2:
+    if len(sys.argv) > 1:
          data_type = sys.argv[1]
-         step = int(sys.argv[2])
+    logger.info("running generate_ltr_data.py, data_type:%s" % data_type)
+
+
+    to_file_path = "for_ltr/ltr_%s_train.txt" % (data_type)
+
+    if os.path.exists(to_file_path):
+        logger.info("file exists: ", to_file_path)
+        exit(0)
+
+
     model_path = "models/nn_%s.bin" % data_type
 
     w2v_path = "models/%s.wv.cbow.d200.w10.n10.bin" % data_type
@@ -299,7 +312,8 @@ if __name__ == '__main__':
     qa_path = "%s/QA_list.txt" % data_type
     doc_path = "%s/Doc_list.txt" % data_type
 
-    logger.info("step:%d" % step)
-    logger.info("data_type:%s" % data_type)        
 
-    get_train_data(data_type, w2v_model, qa_path, doc_path, step)
+
+    for step in range(5):
+        logger.info("step:%d" % step)
+        get_train_data(data_type, w2v_model, qa_path, doc_path, to_file_path, step)

@@ -1,4 +1,5 @@
 import os
+import sys
 import numpy as np
 
 import tensorflow as tf
@@ -249,7 +250,7 @@ def train(w2v_model, qa_file, doc_file, to_model_file, to_ckpt_file):
     logger.info("start training...")
     model.fit([q_encoder_input[:train_num], r_decoder_input[:train_num], w_decoder_input[:train_num], weight_data_r[:train_num], weight_data_w[:train_num] ], y_data[:train_num],
               batch_size=64,
-              epochs=20,
+              epochs=25,
               verbose=1,
               validation_data=([q_encoder_input[train_num:], r_decoder_input[train_num:], w_decoder_input[train_num:], weight_data_r[train_num:], weight_data_w[train_num:] ], y_data[train_num:])
               )
@@ -274,6 +275,11 @@ def train(w2v_model, qa_file, doc_file, to_model_file, to_ckpt_file):
 
 if __name__ == '__main__':
     data_type = "adwords"
+    if len(sys.argv) > 1:
+         data_type = sys.argv[1]
+    print("running model.py, data_type: %s" % data_type)
+    logger.info("running model.py, data_type: %s" % data_type)
+
 
     path = "models/%s.wv.cbow.d200.w10.n10.bin" % data_type
     to_model_file = "models/nn_%s.bin" % data_type

@@ -49,6 +49,7 @@ config.gpu_options.allow_growth = True
 session = tf.Session(config=config)
 KTF.set_session(session)
 
+import sys
 import random
 random.seed(9)
 
@@ -277,6 +278,9 @@ if __name__ == '__main__':
     # new_dnn_model = Model(inputs=model.input, outputs=model.get_layer('dropout2').output)
 
     data_type = 'adwords'
+    if len(sys.argv) > 1:
+         data_type = sys.argv[1]
+    logger.info("running generate_ltr_testdata.py, data_type:%s" % data_type)
 
     model_path = "models/nn_%s.bin" % data_type
     ckpt_path = "ckpt/nn_weights_%s.h5"% data_type

@@ -13,6 +13,16 @@ from nltk.tokenize import word_tokenize
 import string
 import os
 from gensim.models import Word2Vec
+import sys
+import time
+import logging
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+now_time = time.strftime("%Y-%m-%d-%H-%M", time.localtime())
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s %(levelname)s %(filename)s line: %(lineno)s - %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S',
+                    filename=BASE_DIR + '/' + now_time + '.log')
+logger = logging.getLogger(__name__)
 
 
 def remove_punc(s):
@@ -60,6 +70,12 @@ def get_embeddings(data_type, qa_file, doc_file):
 
 if __name__ == '__main__':
     data_type = "adwords"
+    if len(sys.argv) > 1:
+         data_type = sys.argv[1]
+    print("running word2vec.py, data_type: %s" % data_type)
+    logger.info("running word2vec.py, data_type: %s" % data_type)
+
+
     doc_file = data_type + "/Doc_list.txt"
     qa_file = data_type + "/QA_list.txt"
     get_embeddings(data_type, qa_file, doc_file)
