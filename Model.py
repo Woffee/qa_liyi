@@ -13,6 +13,7 @@ from keras import backend as K
 from adding_weight import adding_weight
 
 import keras
+import argparse
 
 import time
 import logging
@@ -135,9 +136,9 @@ def get_randoms(arr, not_in, num=2):
     return res
 
 
-def train(w2v_model, qa_file, doc_file, to_model_file, to_ckpt_file):
+def train(w2v_model, qa_file, doc_file, to_model_file, to_ckpt_file, args):
     logger.info("preprocessing...")
-    ns_amount = 10
+    ns_amount = args.ns_amount
 
     questions = []
     answers = []
@@ -178,7 +179,7 @@ def train(w2v_model, qa_file, doc_file, to_model_file, to_ckpt_file):
                 output_length = max(len(words), output_length)
                 docs.append(words)
     doc_vecs = []
-    output_length = 1000
+    output_length = args.output_length
     for d_words in docs:
         doc_vecs.append(sentence2vec(w2v_model, d_words, output_length))
     print("len(doc_vecs)",len(doc_vecs))
@@ -228,7 +229,7 @@ def train(w2v_model, qa_file, doc_file, to_model_file, to_ckpt_file):
         for aid in aids:
             w_decoder.append( doc_vecs[aid] )
             w_weight.append( doc_weight[ aid ])
-        w_decoder = np.array(w_decoder).reshape(output_length, 200, ns_amount)
+        w_decoder = np.array(w_decoder).reshape(output_length, args.input_dim, ns_amount)
         w_weight = np.array(w_weight).reshape((1, ns_amount))
         w_decoder_input.append(w_decoder)
         weight_data_w.append(w_weight)
@@ -239,18 +240,18 @@ def train(w2v_model, qa_file, doc_file, to_model_file, to_ckpt_file):
     # reshape(ns_amount, output_length, 200)
     train_num = int(total * 0.9)
     model = negative_samples(input_length=input_length,
-                             input_dim=200,
+                             input_dim=args.input_dim,
                              output_length=output_length,
-                             output_dim=200,
-                             hidden_dim=64,
+                             output_dim=args.output_dim,
+                             hidden_dim=args.hidden_dim,
                              ns_amount=ns_amount,
-                             learning_rate=0.001,
-                             drop_rate=0.001)
+                             learning_rate=args.learning_rate,
+                             drop_rate=args.drop_rate)
     print("start training...")
     logger.info("start training...")
     model.fit([q_encoder_input[:train_num], r_decoder_input[:train_num], w_decoder_input[:train_num], weight_data_r[:train_num], weight_data_w[:train_num] ], y_data[:train_num],
-              batch_size=64,
-              epochs=25,
+              batch_size=args.batch_size,
+              epochs=args.epochs,
               verbose=1,
               validation_data=([q_encoder_input[train_num:], r_decoder_input[train_num:], w_decoder_input[train_num:], weight_data_r[train_num:], weight_data_w[train_num:] ], y_data[train_num:])
               )
@@ -274,14 +275,32 @@ def train(w2v_model, qa_file, doc_file, to_model_file, to_ckpt_file):
 
 
 if __name__ == '__main__':
-    data_type = "adwords"
-    if len(sys.argv) > 1:
-         data_type = sys.argv[1]
+    parser = argparse.ArgumentParser(description='Test for argparse')
+    parser.add_argument('--data_type', help='data_type',  required=True)
+
+    parser.add_argument('--input_dim', help='input_dim', type=int, default=200)
+    parser.add_argument('--output_dim', help='output_dim', type=int, default=200)
+    parser.add_argument('--hidden_dim', help='hidden_dim', type=int, default=64)
+    parser.add_argument('--ns_amount', help='ns_amount', type=int, default=10)
+
+    parser.add_argument('--learning_rate', help='learning_rate', type=float, default=0.001)
+    parser.add_argument('--drop_rate', help='drop_rate', type=float, default=0.01)
+
+    parser.add_argument('--batch_size', help='batch_size', type=int, default=32)
+    parser.add_argument('--epochs', help='epochs', type=int, default=20)
+
+    parser.add_argument('--output_length', help='output_length', type=int, default=1000)
+    args = parser.parse_args()
+    logger.info("training parameters %s", args)
+
+    data_type = args.data_type
+
     print("running model.py, data_type: %s" % data_type)
     logger.info("running model.py, data_type: %s" % data_type)
 
 
-    path = "models/%s.wv.cbow.d200.w10.n10.bin" % data_type
+
+    path = "models/%s.wv.cbow.d%d.w10.n10.bin" % (data_type, args.input_dim)
     to_model_file = "models/nn_%s.bin" % data_type
     to_ckpt_file = "ckpt/nn_weights_%s.h5" % data_type
 
@@ -292,4 +311,4 @@ if __name__ == '__main__':
     doc_path = "%s/Doc_list.txt" % data_type
 
     # res = sentence2vec(w2v_model, "I want to determine Quantity sold", 10)
-    train(w2v_model, qa_path, doc_path, to_model_file, to_ckpt_file)
+    train(w2v_model, qa_path, doc_path, to_model_file, to_ckpt_file, args)

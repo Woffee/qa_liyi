@@ -52,7 +52,7 @@ KTF.set_session(session)
 import sys
 import random
 random.seed(9)
-
+import argparse
 
 #input_length: How many words in one questions (MAX)
 #input_dim: How long the representation vector for one word for questions
@@ -107,7 +107,7 @@ def negative_samples(input_length, input_dim, output_length, output_dim, hidden_
 
 
 
-def get_train_data(data_type, w2v_model, ckpt_path,  qa_file, doc_file, to_file_path, step = 0):
+def get_train_data(data_type, w2v_model, ckpt_path,  qa_file, doc_file, to_file_path, args, step = 0):
 
     if os.path.exists(to_file_path):
         logger.info("file exists: %s" % to_file_path)
@@ -181,13 +181,13 @@ def get_train_data(data_type, w2v_model, ckpt_path,  qa_file, doc_file, to_file_
 
     logger.info("loading weights...")
     model = negative_samples(input_length=input_length,
-                             input_dim=200,
+                             input_dim=args.input_dim,
                              output_length=output_length,
-                             output_dim=200,
-                             hidden_dim=64,
+                             output_dim=args.output_dim,
+                             hidden_dim=args.hidden_dim,
                              ns_amount=ns_amount,
-                             learning_rate=0.001,
-                             drop_rate=0.001)
+                             learning_rate=args.learning_rate,
+                             drop_rate=args.drop_rate)
     model.load_weights(ckpt_path)
     new_dnn_model = Model(inputs=model.input, outputs=model.get_layer('dropout2').output)
 
@@ -277,19 +277,36 @@ if __name__ == '__main__':
     # model = load_model(model_path)
     # new_dnn_model = Model(inputs=model.input, outputs=model.get_layer('dropout2').output)
 
-    data_type = 'adwords'
-    if len(sys.argv) > 1:
-         data_type = sys.argv[1]
+    parser = argparse.ArgumentParser(description='Test for argparse')
+    parser.add_argument('--data_type', help='data_type',  required=True)
+
+    parser.add_argument('--input_dim', help='input_dim', type=int, default=200)
+    parser.add_argument('--output_dim', help='output_dim', type=int, default=200)
+    parser.add_argument('--hidden_dim', help='hidden_dim', type=int, default=64)
+    parser.add_argument('--ns_amount', help='ns_amount', type=int, default=10)
+
+    parser.add_argument('--learning_rate', help='learning_rate', type=float, default=0.001)
+    parser.add_argument('--drop_rate', help='drop_rate', type=float, default=0.01)
+
+    parser.add_argument('--batch_size', help='batch_size', type=int, default=32)
+    parser.add_argument('--epochs', help='epochs', type=int, default=20)
+
+    parser.add_argument('--output_length', help='output_length', type=int, default=1000)
+    args = parser.parse_args()
+    logger.info("training parameters %s", args)
+
+    data_type = args.data_type
+
     logger.info("running generate_ltr_testdata.py, data_type:%s" % data_type)
 
     model_path = "models/nn_%s.bin" % data_type
     ckpt_path = "ckpt/nn_weights_%s.h5"% data_type
 
-    w2v_path = "models/%s.wv.cbow.d200.w10.n10.bin" % data_type
+    w2v_path = "models/%s.wv.cbow.d%d.w10.n10.bin" % (data_type, args.input_dim)
     w2v_model = KeyedVectors.load_word2vec_format(w2v_path, binary=True)
 
     qa_path = "%s/QA_list.txt" % data_type
     doc_path = "%s/Doc_list.txt" % data_type
 
     to_file_path = "for_ltr/ltr_%s_test_v2.txt" % (data_type)
-    get_train_data(data_type, w2v_model,ckpt_path, qa_path, doc_path, to_file_path, 1)
+    get_train_data(data_type, w2v_model,ckpt_path, qa_path, doc_path, to_file_path, args, 1)
