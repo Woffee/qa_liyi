@@ -243,7 +243,7 @@ def get_train_data(data_type, w2v_model, ckpt_path,  qa_file, doc_file, to_file_
                 w_decoder.append(doc_vecs[aid])
                 w_weight.append(doc_weight[aid])
 
-            w_decoder = np.array(w_decoder).reshape(output_length, 200, ns_amount)
+            w_decoder = np.array(w_decoder).reshape(output_length, args.input_dim, ns_amount)
             w_weight = np.array(w_weight).reshape((1, ns_amount))
             w_decoder_input.append(w_decoder)
             weight_data_w.append(w_weight)
