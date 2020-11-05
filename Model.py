@@ -7,7 +7,7 @@ import keras.backend.tensorflow_backend as KTF
 from keras.optimizers import adam
 from keras.layers.recurrent import GRU
 from keras.layers.core import Lambda
-from keras.layers import Dot, add, Bidirectional, Dropout, Reshape
+from keras.layers import Dot, add, Bidirectional, Dropout, Reshape, Concatenate, Dense
 from keras.models import Input, Model
 from keras import backend as K
 from adding_weight import adding_weight
@@ -90,12 +90,16 @@ def negative_samples(input_length, input_dim, output_length, output_dim, hidden_
     r_decoder_output = decoder(fixed_r_decoder_input)
     r_decoder_output = Dropout(rate=drop_rate, name="dropout2")(r_decoder_output)
 
+    output_vec = Concatenate(axis=1, name="dropout_con")([q_encoder_output, r_decoder_output])
+    similarity = Dense(1, name="similarity")(output_vec)
+
     w_decoder_output_list = []
     for i in range(ns_amount):
         w_decoder_output = decoder(fixed_w_decoder_input[i])
         w_decoder_output = Dropout(rate=drop_rate)(w_decoder_output)
         w_decoder_output_list.append(w_decoder_output)
-    similarities = [Dot(axes=1, normalize=True)([q_encoder_output, r_decoder_output])]
+    similarities = [ similarity ]
+    # similarities = [Dot(axes=1, normalize=True)([q_encoder_output, r_decoder_output])]
     for i in range(ns_amount):
         similarities.append(Dot(axes=1, normalize=True)([q_encoder_output, w_decoder_output_list[i]]))
     loss_data = Lambda(lambda x: loss_c(x))(similarities)

@@ -88,7 +88,7 @@ def negative_samples(input_length, input_dim, output_length, output_dim, hidden_
 
     decoder = Bidirectional(GRU(hidden_dim), merge_mode="ave", name="bidirectional2")
     r_decoder_output = decoder(fixed_r_decoder_input)
-    r_decoder_output = Dropout(rate=drop_rate, name="dropout2")(r_decoder_output)
+    r_decoder_output = Dropout(rate=drop_rate, name="dropout_con")(r_decoder_output)
 
     w_decoder_output_list = []
     for i in range(ns_amount):
@@ -287,9 +287,6 @@ def get_train_data(data_type, w2v_model,  qa_file, doc_file, to_file_path, args,
 
 
 if __name__ == '__main__':
-
-    # model = load_model(model_path)
-    # new_dnn_model = Model(inputs=model.input, outputs=model.get_layer('dropout2').output)
 
     parser = argparse.ArgumentParser(description='Test for argparse')
     parser.add_argument('--data_type', help='data_type',  required=True)
