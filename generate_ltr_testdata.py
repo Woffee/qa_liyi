@@ -137,7 +137,7 @@ def get_train_data(data_type, w2v_model, ckpt_path,  qa_file, doc_file, to_file_
                              learning_rate=args.learning_rate,
                              drop_rate=args.drop_rate)
     model.load_weights(ckpt_path)
-    new_dnn_model = Model(inputs=model.input, outputs=model.get_layer('dropout_con').output)
+    new_dnn_model = Model(inputs=model.input, outputs=model.get_layer('output_hid').output)
 
 
     total = len(question_vecs)

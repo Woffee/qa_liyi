@@ -91,7 +91,8 @@ def negative_samples(input_length, input_dim, output_length, output_dim, hidden_
     r_decoder_output = Dropout(rate=drop_rate, name="dropout2")(r_decoder_output)
 
     output_vec = Concatenate(axis=1, name="dropout_con")([q_encoder_output, r_decoder_output])
-    similarity = Dense(1, name="similarity")(output_vec)
+    output_hid = Dense(hidden_dim, name="output_hid")(output_vec)
+    similarity = Dense(1, name="similarity")(output_hid)
 
     w_decoder_output_list = []
     for i in range(ns_amount):
