@@ -42,7 +42,7 @@ import nltk
 from nltk.tokenize import word_tokenize
 from gensim.models.keyedvectors import KeyedVectors
 nltk.download('punkt')
-from Model import loss_c, get_randoms, sentence2vec
+from Model import loss_c, get_randoms, sentence2vec, negative_samples
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
@@ -51,60 +51,6 @@ KTF.set_session(session)
 
 import random
 random.seed(9)
-
-
-#input_length: How many words in one questions (MAX)
-#input_dim: How long the representation vector for one word for questions
-#output_length: How many words in one document (MAX)
-#output_dim: How long the representation vector for one word for documents
-#hidden_dim: Hidden size for network
-#ns_amount: Negative samples amount
-#learning_rate: Learning rate for the model
-#drop_out_rate: Drop out rate when doing the tarining
-#q_encoder_input: Question (batch_size, input_length, input_dim)
-#r_decoder_input: Related API document (when doing prediction, it is the document you want to check the relationship score)(batch_size, output_length, output_dim)
-#e.g. for question Q, if you want to check the relationship score between Q and document D, then you put D here.
-#w_decoder_input: Unrelated API documents (when doing prediction, it can be input with zero array which will not influence result)(batch_size, output_length, output_dim, ns_amount)
-#weight_data_1: Weight (Ti/Tmax) for related document(batch_size, 1)
-#weight_data_2: Weights (Ti/Tmax) for unrelated documents(batch_size, 1, ns_amount)
-def negative_samples(input_length, input_dim, output_length, output_dim, hidden_dim, ns_amount, learning_rate, drop_rate):
-    q_encoder_input = Input(shape=(input_length, input_dim))
-    r_decoder_input = Input(shape=(output_length, output_dim))
-    weight_data_r = Input(shape=(1,))
-    weight_data_w = Input(shape=(1, ns_amount))
-    weight_data_w_list = Lambda(lambda x: tf.split(x, num_or_size_splits=ns_amount, axis=2))(weight_data_w)
-    fixed_r_decoder_input = adding_weight(output_length, output_dim)([r_decoder_input, weight_data_r])
-    w_decoder_input = Input(shape=(output_length, output_dim, ns_amount))
-    w_decoder_input_list = Lambda(lambda x: tf.split(x, num_or_size_splits=ns_amount, axis=3))(w_decoder_input)
-    fixed_w_decoder_input = []
-    for i in range(ns_amount):
-        w_decoder_input_list[i] = Reshape((output_length, output_dim))(w_decoder_input_list[i])
-        weight_data_w_list[i] = Reshape((1,))(weight_data_w_list[i])
-        fixed_w_decoder_input.append(adding_weight(output_length, output_dim)([w_decoder_input_list[i], weight_data_w_list[i]]))
-
-    encoder = Bidirectional(GRU(hidden_dim), merge_mode="ave", name="bidirectional1")
-    q_encoder_output = encoder(q_encoder_input)
-    q_encoder_output = Dropout(rate=drop_rate, name="dropout1")(q_encoder_output)
-
-    decoder = Bidirectional(GRU(hidden_dim), merge_mode="ave", name="bidirectional2")
-    r_decoder_output = decoder(fixed_r_decoder_input)
-    r_decoder_output = Dropout(rate=drop_rate, name="dropout_con")(r_decoder_output)
-
-    w_decoder_output_list = []
-    for i in range(ns_amount):
-        w_decoder_output = decoder(fixed_w_decoder_input[i])
-        w_decoder_output = Dropout(rate=drop_rate)(w_decoder_output)
-        w_decoder_output_list.append(w_decoder_output)
-    similarities = [Dot(axes=1, normalize=True)([q_encoder_output, r_decoder_output])]
-    for i in range(ns_amount):
-        similarities.append(Dot(axes=1, normalize=True)([q_encoder_output, w_decoder_output_list[i]]))
-    loss_data = Lambda(lambda x: loss_c(x))(similarities)
-    model = Model([q_encoder_input, r_decoder_input, w_decoder_input, weight_data_r, weight_data_w], similarities[0])
-    ada = adam(lr=learning_rate)
-    model.compile(optimizer=ada, loss=lambda y_true, y_pred: loss_data)
-    return model
-
-
 
 def get_train_data(data_type, w2v_model,  qa_file, doc_file, to_file_path, args, step = 0):
     logger.info("preprocessing...")
@@ -259,7 +205,7 @@ def get_train_data(data_type, w2v_model,  qa_file, doc_file, to_file_path, args,
                              learning_rate=args.learning_rate,
                              drop_rate=args.drop_rate)
     model.load_weights("ckpt/nn_weights_%s.h5" % data_type)
-    new_dnn_model = Model(inputs=model.input, outputs=model.get_layer('dropout2').output)
+    new_dnn_model = Model(inputs=model.input, outputs=model.get_layer('dropout_con').output)
 
 
     logger.info("predicting...")
