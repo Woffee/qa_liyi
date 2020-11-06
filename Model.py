@@ -99,7 +99,7 @@ def negative_samples(input_length, input_dim, output_length, output_dim, hidden_
     # Difference between kernel, bias, and activity regulizers in Keras
     # https://stats.stackexchange.com/questions/383310/difference-between-kernel-bias-and-activity-regulizers-in-keras
     output = Dense(128, kernel_regularizer=keras.regularizers.l2(0.0001))(output_vec) # activation="relu",
-    output = Dense(64, activation='elu', name="output_hid", kernel_regularizer=keras.regularizers.l2(0.0001))(output) # activation="relu",
+    output = Dense(64, name="output_hid", kernel_regularizer=keras.regularizers.l2(0.0001))(output) # activation="relu",
     similarity = Dense(1, name="similarity", activation="softmax")(output)
 
     w_decoder_output_list = []
