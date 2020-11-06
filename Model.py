@@ -90,10 +90,10 @@ def negative_samples(input_length, input_dim, output_length, output_dim, hidden_
     # r_decoder_output = decoder(fixed_r_decoder_input)
     # r_decoder_output = Dropout(rate=drop_rate, name="dropout2")(r_decoder_output)
 
-    doc_output = MaxPooling1D(pool_size=20, stride=5, padding='same')(q_encoder_input)
-    doc_output = Flatten()(doc_output)
-    que_output = MaxPooling1D(pool_size=20, stride=5, padding='same')(fixed_r_decoder_input)
-    que_output = Flatten()(que_output)
+    # doc_output = MaxPooling1D(pool_size=20, stride=5, padding='same')(q_encoder_input)
+    doc_output = Flatten()(q_encoder_input)
+    # que_output = MaxPooling1D(pool_size=20, stride=5, padding='same')(fixed_r_decoder_input)
+    que_output = Flatten()(fixed_r_decoder_input)
     output_vec = Concatenate(axis=1)([doc_output, que_output])
 
     # Difference between kernel, bias, and activity regulizers in Keras
