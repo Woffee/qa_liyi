@@ -7,7 +7,7 @@ import keras.backend.tensorflow_backend as KTF
 from keras.optimizers import adam
 from keras.layers.recurrent import GRU
 from keras.layers.core import Lambda
-from keras.layers import Dot, add, Bidirectional, Dropout, Reshape, Concatenate, Dense
+from keras.layers import Dot, add, Bidirectional, Dropout, Reshape, Concatenate, Dense, MaxPooling1D, Flatten
 from keras.models import Input, Model
 from keras import backend as K
 from adding_weight import adding_weight
@@ -87,13 +87,20 @@ def negative_samples(input_length, input_dim, output_length, output_dim, hidden_
     q_encoder_output = Dropout(rate=drop_rate, name="dropout1")(q_encoder_output)
 
     decoder = Bidirectional(GRU(hidden_dim), merge_mode="ave", name="bidirectional2")
-    r_decoder_output = decoder(fixed_r_decoder_input)
-    r_decoder_output = Dropout(rate=drop_rate, name="dropout2")(r_decoder_output)
+    # r_decoder_output = decoder(fixed_r_decoder_input)
+    # r_decoder_output = Dropout(rate=drop_rate, name="dropout2")(r_decoder_output)
 
-    output_vec = Concatenate(axis=1, name="dropout_con")([q_encoder_output, r_decoder_output])
-    output_hid = Dense(hidden_dim, name="output_hid")(output_vec)
-    output_hid2 = Dense(8, name="output_hid2")(output_hid)
-    similarity = Dense(1, name="similarity")(output_hid2)
+    doc_output = MaxPooling1D(pool_size=20, stride=5, padding='same')(q_encoder_input)
+    doc_output = Flatten()(doc_output)
+    que_output = MaxPooling1D(pool_size=20, stride=5, padding='same')(fixed_r_decoder_input)
+    que_output = Flatten()(que_output)
+    output_vec = Concatenate(axis=1)([doc_output, que_output])
+
+    # Difference between kernel, bias, and activity regulizers in Keras
+    # https://stats.stackexchange.com/questions/383310/difference-between-kernel-bias-and-activity-regulizers-in-keras
+    output = Dense(128, kernel_regularizer=keras.regularizers.l2(0.0001))(output_vec) # activation="relu",
+    output = Dense(64, activation='elu', name="output_hid", kernel_regularizer=keras.regularizers.l2(0.0001))(output) # activation="relu",
+    similarity = Dense(1, name="similarity", activation="softmax")(output)
 
     w_decoder_output_list = []
     for i in range(ns_amount):
@@ -288,6 +295,9 @@ if __name__ == '__main__':
     parser.add_argument('--output_dim', help='output_dim', type=int, default=200)
     parser.add_argument('--hidden_dim', help='hidden_dim', type=int, default=64)
     parser.add_argument('--ns_amount', help='ns_amount', type=int, default=10)
+
+    parser.add_argument("--pool_s", default=20, type=int, help="")
+    parser.add_argument("--pool_stride", default=5, type=int, help="")
 
     parser.add_argument('--learning_rate', help='learning_rate', type=float, default=0.001)
     parser.add_argument('--drop_rate', help='drop_rate', type=float, default=0.01)
