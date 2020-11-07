@@ -262,7 +262,6 @@ def train(w2v_model, qa_file, doc_file, to_model_file, to_ckpt_file, args):
                              learning_rate=args.learning_rate,
                              drop_rate=args.drop_rate)
     print(model.summary())
-    exit()
 
     print("start training...")
     logger.info("start training...")
