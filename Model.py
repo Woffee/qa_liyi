@@ -84,17 +84,18 @@ def negative_samples(input_length, input_dim, output_length, output_dim, hidden_
 
     encoder = Bidirectional(GRU(hidden_dim), merge_mode="ave", name="bidirectional1")
     q_encoder_output = encoder(q_encoder_input)
-    q_encoder_output = Dropout(rate=drop_rate, name="dropout1")(q_encoder_output)
+    # q_encoder_output = Dropout(rate=drop_rate, name="dropout1")(q_encoder_output)
 
     decoder = Bidirectional(GRU(hidden_dim), merge_mode="ave", name="bidirectional2")
-    # r_decoder_output = decoder(fixed_r_decoder_input)
+    r_decoder_output = decoder(fixed_r_decoder_input)
     # r_decoder_output = Dropout(rate=drop_rate, name="dropout2")(r_decoder_output)
 
     # doc_output = MaxPooling1D(pool_size=20, stride=5, padding='same')(q_encoder_input)
-    doc_output = Flatten()(q_encoder_input)
+    # doc_output = Flatten()(q_encoder_input)
     # que_output = MaxPooling1D(pool_size=20, stride=5, padding='same')(fixed_r_decoder_input)
-    que_output = Flatten()(fixed_r_decoder_input)
-    output_vec = Concatenate(axis=1)([doc_output, que_output])
+    # que_output = Flatten()(fixed_r_decoder_input)
+
+    output_vec = Concatenate(axis=1)([q_encoder_output, r_decoder_output])
 
     # Difference between kernel, bias, and activity regulizers in Keras
     # https://stats.stackexchange.com/questions/383310/difference-between-kernel-bias-and-activity-regulizers-in-keras
@@ -260,6 +261,9 @@ def train(w2v_model, qa_file, doc_file, to_model_file, to_ckpt_file, args):
                              ns_amount=ns_amount,
                              learning_rate=args.learning_rate,
                              drop_rate=args.drop_rate)
+    print(model.summary())
+    exit()
+
     print("start training...")
     logger.info("start training...")
     model.fit([q_encoder_input[:train_num], r_decoder_input[:train_num], w_decoder_input[:train_num], weight_data_r[:train_num], weight_data_w[:train_num] ], y_data[:train_num],
@@ -289,7 +293,7 @@ def train(w2v_model, qa_file, doc_file, to_model_file, to_ckpt_file, args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Test for argparse')
-    parser.add_argument('--data_type', help='data_type',  required=True)
+    parser.add_argument('--data_type', help='data_type',  type=str, default='twitter')
 
     parser.add_argument('--input_dim', help='input_dim', type=int, default=200)
     parser.add_argument('--output_dim', help='output_dim', type=int, default=200)
