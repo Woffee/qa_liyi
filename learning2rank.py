@@ -9,9 +9,17 @@ import os
 import time
 import logging
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
+import argparse
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Test for argparse')
+    parser.add_argument('--data_type', help='data_type', type=str, default='twitter')
+    parser.add_argument('--model_type', help='model_type', type=str, default='lambdaMART')
+    args = parser.parse_args()
+
+    data_type = args.data_type
+    print("data_type:", data_type)
+
     ranklib_path = '/Users/woffee/www/gis_qa/ltrdemo2wenbo/utils/bin/RankLib.jar'
 
     # /Users/woffee/www/gis_qa/ltrdemo2wenbo/evaluation.py
@@ -23,9 +31,8 @@ if __name__ == '__main__':
     }
 
     train_metric = 'MAP'
-    train_model = 'RankNet'
+    train_model = args.model_type
 
-    data_type = "twitter"
     data_train_path = "for_ltr/ltr_%s_train.txt" % data_type
     data_test_path = "for_ltr/ltr_%s_test_v2.txt" % data_type
 

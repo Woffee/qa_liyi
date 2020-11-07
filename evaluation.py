@@ -9,6 +9,7 @@ import numpy as np
 from sklearn import metrics
 from sklearn.metrics import roc_auc_score
 import matplotlib.pyplot as plt
+import argparse
 
 def min_max(arr):
     mi = np.min(arr)
@@ -60,6 +61,7 @@ def calc_auc(initrank_file, pred_file):
                 q_pred[qid].append([did, score])
             else:
                 q_pred[qid] = [[did, score]]
+            print("did:",did,", score:", score)
 
     # auc
     ss = 0
@@ -73,7 +75,6 @@ def calc_auc(initrank_file, pred_file):
         for did, score in q_pred[qid]:
             if did in ans:
                 y_true.append(1)
-
             else:
                 y_true.append(0)
 
@@ -123,8 +124,16 @@ def calc_auc(initrank_file, pred_file):
 
 
 if __name__ == '__main__':
-    data_type = "twitter"
+    parser = argparse.ArgumentParser(description='Test for argparse')
+    parser.add_argument('--data_type', help='data_type',  type=str, default='twitter')
+    parser.add_argument('--model_type', help='model_type',  type=str, default='lambdaMART')
+    args = parser.parse_args()
+
+    data_type = args.data_type
+    print("data_type:", data_type)
+
+    model_type = "lambdaMART"
     test_file_path = "for_ltr/ltr_%s_test_v2.txt" % data_type
-    pred_file_path = "ltr/predicts/%s_RankNet_MAP_pred.txt" % data_type
+    pred_file_path = "ltr/predicts/%s_%s_MAP_pred.txt" % (data_type, model_type)
 
     calc_auc(test_file_path, pred_file_path)
