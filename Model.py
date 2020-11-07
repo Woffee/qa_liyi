@@ -84,11 +84,11 @@ def negative_samples(input_length, input_dim, output_length, output_dim, hidden_
 
     encoder = Bidirectional(GRU(hidden_dim), merge_mode="ave", name="bidirectional1")
     q_encoder_output = encoder(q_encoder_input)
-    # q_encoder_output = Dropout(rate=drop_rate, name="dropout1")(q_encoder_output)
+    q_encoder_output = Dropout(rate=drop_rate, name="dropout1")(q_encoder_output)
 
     decoder = Bidirectional(GRU(hidden_dim), merge_mode="ave", name="bidirectional2")
     r_decoder_output = decoder(fixed_r_decoder_input)
-    # r_decoder_output = Dropout(rate=drop_rate, name="dropout2")(r_decoder_output)
+    r_decoder_output = Dropout(rate=drop_rate, name="dropout2")(r_decoder_output)
 
     # doc_output = MaxPooling1D(pool_size=20, stride=5, padding='same')(q_encoder_input)
     # doc_output = Flatten()(q_encoder_input)
@@ -227,7 +227,11 @@ def train(w2v_model, qa_file, doc_file, to_model_file, to_ckpt_file, args):
 
     total = len(question_vecs)
 
-    for i in range( total ):
+    # 打乱训练数据
+    qa_index = list( range(total) )
+    random.shuffle(qa_index)
+
+    for i in qa_index:
         y = [1] + [0] * ns_amount
         y_data.append(y)
         # question
@@ -291,6 +295,36 @@ def train(w2v_model, qa_file, doc_file, to_model_file, to_ckpt_file, args):
 
 
 if __name__ == '__main__':
+    qa_path = "%s/QA_list.txt" % "twitter"
+
+    qa_list = []
+
+    # 读取 question 和 answer
+    input_length = 0
+    qid = 0
+    with open(qa_path, "r") as f:
+        lines = f.readlines()
+        for i, line in enumerate(lines):
+            line = line.strip().lower()
+            if line != "" and i % 2 == 0:
+                words = word_tokenize(remove_punc(line))
+                input_length = max(len(words), input_length)
+            elif line != "" and i % 2 == 1:
+                arr = line.strip().split(" ")
+                ans = []
+                for a in arr:
+                    if a != "":
+                        ans.append(int(a) - 1) # 因为原始数据从1开始计数，这里减去1。改为从0开始。
+                qa_list.append({
+                    "qid":qid,
+                    "question": words,
+                    "answers": ans
+                })
+                qid += 1
+    qa_index = list( range(len(qa_list)) )
+    random.shuffle(qa_index)
+
+
     parser = argparse.ArgumentParser(description='Test for argparse')
     parser.add_argument('--data_type', help='data_type',  type=str, default='twitter')
 

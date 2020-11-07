@@ -52,7 +52,7 @@ KTF.set_session(session)
 import random
 random.seed(9)
 
-def get_train_data(data_type, w2v_model,  qa_file, doc_file, to_file_path, args, step = 0):
+def get_train_data(data_type, w2v_model,  qa_file, doc_file, to_file_path, args):
     logger.info("preprocessing...")
     ns_amount = args.ns_amount
 
@@ -119,75 +119,54 @@ def get_train_data(data_type, w2v_model,  qa_file, doc_file, to_file_path, args,
         doc_weight[k] = doc_count[k] / t_max
 
 
-    # [q_encoder_input, r_decoder_input, w_decoder_input, weight_data_r, weight_data_w]
-    q_encoder_input = []
-    r_decoder_input = []
-    w_decoder_input = []
-    weight_data_r = []
-    weight_data_w = []
-    y_data = []
-
     total = len(question_vecs)
-
-    qid_list = []
-    label_list = []
-    aid_list = []
-
     train_num = int(total * 0.9)
     logger.info("train_num:%d, total:%d" % (train_num, total))
-    if step * 200 > train_num:
-        logger.info("step is too big")
-        return
 
-    end = min(train_num, (step + 1) * 200)
-    for i in range( step * 200, end):
-        logger.info("question: %d" % i)
-        qid_list.append(i)
-        label_list.append(1)
-
-        y = [1] + [0] * ns_amount
-        y_data.append(y)
-        # question
-        q_encoder_input.append( question_vecs[i] )
-        # 每个question一个正确答案
-        aid = answers[i][0]
-        aid_list.append(aid)
-        r_decoder_input.append( doc_vecs[ aid ])
-        weight_data_r.append(doc_weight[ aid ])
-        # 10个un-related答案
-        aids = get_randoms(list(doc_weight.keys()), [aid], 10)
-        w_decoder = []
-        w_weight = []
-        for aid in aids:
-            w_decoder.append( doc_vecs[aid] )
-            w_weight.append( doc_weight[ aid ])
-
-        w_decoder = np.array(w_decoder).reshape(output_length, args.input_dim, ns_amount)
-        w_weight = np.array(w_weight).reshape((1, ns_amount))
-        w_decoder_input.append(w_decoder)
-        weight_data_w.append(w_weight)
+    # 打乱数据
+    qa_index = list( range(total) )
+    random.shuffle(qa_index)
 
 
-        for aaid in aids:
+    step = 0
+    while step * 200 <= train_num:
+        # [q_encoder_input, r_decoder_input, w_decoder_input, weight_data_r, weight_data_w]
+        q_encoder_input = []
+        r_decoder_input = []
+        w_decoder_input = []
+        weight_data_r = []
+        weight_data_w = []
+        y_data = []
+
+        qid_list = []
+        label_list = []
+        aid_list = []
+
+        logger.info("step: %d" % step)
+
+        end = min(train_num, (step + 1) * 200)
+        for ss in range( step * 200, end):
+            i = qa_index[ss]
+            logger.info("question: %d" % i)
             qid_list.append(i)
-            label_list.append(0)
-            aid_list.append(aaid)
+            label_list.append(1)
 
-            # 这些答案都是unrelated
-            y = [0] * (1+ns_amount)
+            y = [1] + [0] * ns_amount
             y_data.append(y)
             # question
-            q_encoder_input.append(question_vecs[i])
-
-            r_decoder_input.append(doc_vecs[aaid])
-            weight_data_r.append(doc_weight[aaid])
+            q_encoder_input.append( question_vecs[i] )
+            # 每个question一个正确答案
+            aid = answers[i][0]
+            aid_list.append(aid)
+            r_decoder_input.append( doc_vecs[ aid ])
+            weight_data_r.append(doc_weight[ aid ])
             # 10个un-related答案
             aids = get_randoms(list(doc_weight.keys()), [aid], 10)
             w_decoder = []
             w_weight = []
             for aid in aids:
-                w_decoder.append(doc_vecs[aid])
-                w_weight.append(doc_weight[aid])
+                w_decoder.append( doc_vecs[aid] )
+                w_weight.append( doc_weight[ aid ])
 
             w_decoder = np.array(w_decoder).reshape(output_length, args.input_dim, ns_amount)
             w_weight = np.array(w_weight).reshape((1, ns_amount))
@@ -195,38 +174,67 @@ def get_train_data(data_type, w2v_model,  qa_file, doc_file, to_file_path, args,
             weight_data_w.append(w_weight)
 
 
-    logger.info("loading weights: ckpt/nn_weights_%s.h5" % data_type)
-    model = negative_samples(input_length=input_length,
-                             input_dim=args.input_dim,
-                             output_length=output_length,
-                             output_dim=args.output_dim,
-                             hidden_dim=args.hidden_dim,
-                             ns_amount=ns_amount,
-                             learning_rate=args.learning_rate,
-                             drop_rate=args.drop_rate)
-    model.load_weights("ckpt/nn_weights_%s.h5" % data_type)
-    new_dnn_model = Model(inputs=model.input, outputs=model.get_layer('output_hid').output)
+            for aaid in aids:
+                qid_list.append(i)
+                label_list.append(0)
+                aid_list.append(aaid)
+
+                # 这些答案都是unrelated
+                y = [0] * (1+ns_amount)
+                y_data.append(y)
+                # question
+                q_encoder_input.append(question_vecs[i])
+
+                r_decoder_input.append(doc_vecs[aaid])
+                weight_data_r.append(doc_weight[aaid])
+                # 10个un-related答案
+                aids = get_randoms(list(doc_weight.keys()), [aid], 10)
+                w_decoder = []
+                w_weight = []
+                for aid in aids:
+                    w_decoder.append(doc_vecs[aid])
+                    w_weight.append(doc_weight[aid])
+
+                w_decoder = np.array(w_decoder).reshape(output_length, args.input_dim, ns_amount)
+                w_weight = np.array(w_weight).reshape((1, ns_amount))
+                w_decoder_input.append(w_decoder)
+                weight_data_w.append(w_weight)
 
 
-    logger.info("predicting...")
-    res = new_dnn_model.predict([q_encoder_input, r_decoder_input, w_decoder_input, weight_data_r, weight_data_w])
-    # print(res)
+        logger.info("loading weights: ckpt/nn_weights_%s.h5" % data_type)
+        model = negative_samples(input_length=input_length,
+                                 input_dim=args.input_dim,
+                                 output_length=output_length,
+                                 output_dim=args.output_dim,
+                                 hidden_dim=args.hidden_dim,
+                                 ns_amount=ns_amount,
+                                 learning_rate=args.learning_rate,
+                                 drop_rate=args.drop_rate)
+        model.load_weights("ckpt/nn_weights_%s.h5" % data_type)
+        new_dnn_model = Model(inputs=model.input, outputs=model.get_layer('output_hid').output)
 
 
-    with open(to_file_path, "a") as f:
-        for i in range(len(res)):
-            row = res[i]
-            feature_str = ''
-            for j in range(len(row)):
-                feature_str = feature_str + (" %d:%.9f" % (j + 1, row[j]))
-            label = label_list[i]
-            id = qid_list[i]
-            doc_id = aid_list[i]
+        logger.info("predicting...")
+        res = new_dnn_model.predict([q_encoder_input, r_decoder_input, w_decoder_input, weight_data_r, weight_data_w])
+        # print(res)
 
-            line = "%d qid:%d%s # doc-%d \n" % (label, id, feature_str,doc_id)
-            f.write(line)
-    print("saved to:", to_file_path)
-    logger.info("total:%d" % total)
+
+        with open(to_file_path, "a") as f:
+            for i in range(len(res)):
+                row = res[i]
+                feature_str = ''
+                for j in range(len(row)):
+                    feature_str = feature_str + (" %d:%.9f" % (j + 1, row[j]))
+                label = label_list[i]
+                id = qid_list[i]
+                doc_id = aid_list[i]
+
+                line = "%d qid:%d%s # doc-%d \n" % (label, id, feature_str,doc_id)
+                f.write(line)
+        print("saved to:", to_file_path)
+        logger.info("step:%d added" % step)
+        step += 1
+
     logger.info("saved to: %s" % to_file_path)
 
 
@@ -272,8 +280,4 @@ if __name__ == '__main__':
     qa_path = "%s/QA_list.txt" % data_type
     doc_path = "%s/Doc_list.txt" % data_type
 
-
-
-    for step in range(5):
-        logger.info("step:%d" % step)
-        get_train_data(data_type, w2v_model, qa_path, doc_path, to_file_path, args, step)
+    get_train_data(data_type, w2v_model, qa_path, doc_path, to_file_path, args)

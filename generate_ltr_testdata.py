@@ -145,8 +145,14 @@ def get_train_data(data_type, w2v_model, ckpt_path,  qa_file, doc_file, to_file_
 
     qid_list = []
 
+    # 打乱数据
+    qa_index = list( range(total) )
+    random.shuffle(qa_index)
 
-    for i in range( train_num, total):
+
+    for ss in range( train_num, total):
+        i = qa_index[ss]
+
         # [q_encoder_input, r_decoder_input, w_decoder_input, weight_data_r, weight_data_w]
         q_encoder_input = []
         r_decoder_input = []
