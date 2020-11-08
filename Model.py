@@ -95,13 +95,15 @@ def negative_samples(input_length, input_dim, output_length, output_dim, hidden_
     # que_output = MaxPooling1D(pool_size=20, stride=5, padding='same')(fixed_r_decoder_input)
     # que_output = Flatten()(fixed_r_decoder_input)
 
-    output_vec = Concatenate(axis=1)([q_encoder_output, r_decoder_output])
+    output_vec = Concatenate(axis=1, name="dropout_con")([q_encoder_output, r_decoder_output])
+    output_hid = Dense(hidden_dim, name="output_hid")(output_vec)
+    similarity = Dense(1, name="similarity")(output_hid)
 
     # Difference between kernel, bias, and activity regulizers in Keras
     # https://stats.stackexchange.com/questions/383310/difference-between-kernel-bias-and-activity-regulizers-in-keras
-    output = Dense(128, kernel_regularizer=keras.regularizers.l2(0.0001))(output_vec) # activation="relu",
-    output = Dense(64, name="output_hid", kernel_regularizer=keras.regularizers.l2(0.0001))(output) # activation="relu",
-    similarity = Dense(1, name="similarity", activation="softmax")(output)
+    # output = Dense(128, kernel_regularizer=keras.regularizers.l2(0.0001))(output_vec) # activation="relu",
+    # output = Dense(64, name="output_hid", kernel_regularizer=keras.regularizers.l2(0.0001))(output) # activation="relu",
+    # similarity = Dense(1, name="similarity", activation="softmax")(output)
 
     w_decoder_output_list = []
     for i in range(ns_amount):
